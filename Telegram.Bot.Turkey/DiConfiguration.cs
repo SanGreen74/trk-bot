@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Turkey.Commands;
 using Telegram.Bot.Turkey.Commands.AddUser;
+using Telegram.Bot.Turkey.Commands.RemoveUser;
 using Telegram.Bot.Turkey.Commands.Start;
 using Telegram.Bot.Turkey.State;
 
@@ -39,6 +40,7 @@ public static class DiConfiguration
         => services.AddSingleton<MainCommandHandler>()
             .AddSingleton<CommandHandler, AddUserCommandHandler>()
             .AddSingleton<CommandHandler, StartCommandHandler>()
+            .AddSingleton<CommandHandler, RemoveUserCommandHandler>()
             .AddSingleton<CommandHandler[]>(sp => sp.GetServices<CommandHandler>().ToArray());
 
     private static IServiceCollection ConfigureSessionState(this IServiceCollection services)

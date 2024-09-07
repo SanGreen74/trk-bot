@@ -6,7 +6,7 @@ namespace Telegram.Bot.Turkey.Sheets.GoogleClient;
 
 internal static class DiConfigurator
 {
-    private const string FilePathSetting = "GOOGLE_CREDENTIALS_FILE_PATH;";
+    private const string FilePathSetting = "GOOGLE_CREDENTIALS_FILE_PATH";
 
     public static IServiceCollection ConfigureGoogleClient(this IServiceCollection services, IConfiguration configuration)
     {

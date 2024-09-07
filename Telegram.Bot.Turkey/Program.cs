@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Telegram.Bot;
 using Telegram.Bot.Turkey;
 using Telegram.Bot.Turkey.Sheets;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Turkey.Sheets.Expenses;
 
 class Program
 {
@@ -17,7 +15,7 @@ class Program
             .ConfigureBotServices(configuration)
             .ConfigureSheets(configuration)
             .BuildServiceProvider();
-        
+
         var cts = new CancellationTokenSource();
         
         await serviceProvider.GetRequiredService<MessageReceiver>()

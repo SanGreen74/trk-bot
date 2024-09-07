@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Google.Apis.Sheets.v4;
@@ -14,7 +15,8 @@ internal class BotConfigurationRepository : IBotConfigurationRepository
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
     
     private readonly SheetsService _sheetsService;
@@ -28,7 +30,7 @@ internal class BotConfigurationRepository : IBotConfigurationRepository
     {
         var getRequest = _sheetsService.Spreadsheets.Values.Get(SheetConstants.SheetId, ConfigCellKey);
         var response = await getRequest.ExecuteAsync(cancellationToken);
-        if (response.Values.Count > 0)
+        if (response?.Values?.Count > 0)
         {
             var cells = response.Values.First();
             var cell = cells.FirstOrDefault();

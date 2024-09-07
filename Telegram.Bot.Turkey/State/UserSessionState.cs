@@ -5,7 +5,7 @@ namespace Telegram.Bot.Turkey.State;
 public class UserSessionState : IUserSessionState
 {
     private readonly IMemoryCache _memoryCache;
-    private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(10);
     
     public UserSessionState(IMemoryCache memoryCache)
     {

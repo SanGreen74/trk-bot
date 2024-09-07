@@ -22,7 +22,16 @@ internal class ExpensesService : IExpensesService
 
         string[] ExtractUsers(ValueRange valueRange)
         {
-            throw new NotImplementedException();
+            if (valueRange.Values.Count > 0)
+            {
+                return valueRange.Values.First()
+                    .Select(x => x.ToString())
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Select(x => x!)
+                    .ToArray();
+            }
+
+            return [];
         }
 
         string FormatUsersCells() => $"{SheetName}!D1:G1";

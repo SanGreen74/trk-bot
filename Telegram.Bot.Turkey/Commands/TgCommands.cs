@@ -5,6 +5,7 @@ namespace Telegram.Bot.Turkey.Commands;
 public static class TgCommands
 {
     public const string AddUser = "/add_user";
+    public const string RemoveUser = "/remove_user";
     public const string AddPersonalExpense = "/personal_expense";
     public const string AddCommonExpense = "/common_expense";
     public const string Start = "/start";

@@ -1,3 +1,6 @@
+using Telegram.Bot.Turkey.Sheets.BotConfiguration;
+using Telegram.Bot.Turkey.Sheets.BotConfiguration.Models;
+using Telegram.Bot.Turkey.Sheets.Expenses;
 using Telegram.Bot.Turkey.State;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -9,32 +12,34 @@ public class AddUserCommandHandler : CommandHandler
 {
     private readonly ITelegramBotClient _botClient;
     private readonly IUserSessionState _userSessionState;
+    private readonly IExpensesService _expensesService;
+    private readonly IBotConfigurationRepository _configurationRepository;
     public override required string CommandName { get; init; } = TgCommands.AddUser;
 
-    public AddUserCommandHandler(ITelegramBotClient botClient, IUserSessionState userSessionState)
+    public AddUserCommandHandler(ITelegramBotClient botClient, IUserSessionState userSessionState,
+        IExpensesService expensesService, IBotConfigurationRepository configurationRepository) : base(userSessionState)
     {
         _botClient = botClient;
         _userSessionState = userSessionState;
+        _expensesService = expensesService;
+        _configurationRepository = configurationRepository;
     }
     
-    public override async Task StartHandle(Update update, CancellationToken cancellationToken)
+    public override async Task StartHandle(Update update, CancellationToken ct)
     {
-        // TODO Get users from s3
-        var users = new[] { "Первый", "Второй", "Третий" };
-        var chatId = update.Message!.Chat.Id; // Todo check
-        var userName = update.Message!.From!.Username; // Todo check
+        var users = await _expensesService.GetUsersAsync(ct);
+        var inlineKeyboardButtons = users
+            .Select(x => InlineKeyboardButton.WithCallbackData(x, x))
+            .ToArray();
+        var chatId = update.Message!.Chat.Id;
 
-        var buttons = new InlineKeyboardMarkup([
-            [InlineKeyboardButton.WithCallbackData("Пользователь 1", "user1")],
-            [InlineKeyboardButton.WithCallbackData("Пользователь 2", "user2")],
-            [InlineKeyboardButton.WithCallbackData("Пользователь 3", "user3")]
-        ]);
+        var buttons = new InlineKeyboardMarkup([inlineKeyboardButtons]);
 
         await _botClient.SendTextMessageAsync(
             chatId: chatId,
             text: "Выберите пользователя:",
             replyMarkup: buttons, 
-            cancellationToken: cancellationToken);
+            cancellationToken: ct);
     }
 
     public override async Task HandleIntermediateMessage(Update update, CancellationToken ct)
@@ -53,7 +58,8 @@ public class AddUserCommandHandler : CommandHandler
 
     private async Task HandleMessageAsync(Message update, CancellationToken ct)
     {
-        var messageText = update.Text; 
+        var messageText = update.Text!;
+        var tgName = messageText.Trim('@');
         var chatId = update.Chat.Id;
         var userName = update.From!.Username!;
         var state = _userSessionState.GetState<State>(userName);
@@ -62,16 +68,33 @@ public class AddUserCommandHandler : CommandHandler
             await _botClient.SendTextMessageAsync(chatId, "Сессия истекла, начните сначала", cancellationToken: ct);
             return;
         }
-            
-        // TODO Update users in s3
-            
-        await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: $"Пользователь {state.Name} с логином {messageText} добавлен в список участников",
-            cancellationToken: ct
-        );
 
-        _userSessionState.Invalidate(userName);
+        var configuration = await _configurationRepository.GetAsync(ct);
+        configuration ??= new BotConfigurationDto();
+        if (configuration.Participants.Any(x => x.TgName.Equals(tgName, StringComparison.InvariantCultureIgnoreCase)))
+        {
+            await _botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: $"Пользователь {state.Name} с логином {messageText} уже есть в списке участников",
+                cancellationToken: ct
+            );    
+        }
+        else
+        {
+            configuration.Participants.Add(new Participant
+            {
+                Name = state.Name,
+                TgName = messageText.Trim('@')
+            });
+            await _configurationRepository.SetAsync(configuration, ct);
+            await _botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: $"Пользователь {state.Name} с логином {messageText} добавлен в список участников",
+                cancellationToken: ct
+            );
+        }
+
+        OnComplete(userName);
     }
 
     private async Task HandleCallbackQueryAsync(CallbackQuery query, CancellationToken ct)
