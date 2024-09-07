@@ -125,6 +125,7 @@ public class MainCommandHandler
     private async Task HandleStartCommandAsync(Update update, long chatId, string userName, string commandName,
         CancellationToken cancellationToken)
     {
+        _userSessionState.Invalidate(userName);
         _userSessionState.SetCommandName(userName, commandName);
         var commandHandler = _commandHandlers
             .FirstOrDefault(x => string.Equals(x.CommandName, commandName, StringComparison.CurrentCultureIgnoreCase));

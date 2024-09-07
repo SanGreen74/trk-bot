@@ -40,7 +40,7 @@ public class MessageReceiver
     
     private static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Error: {exception.Message}");
+        Console.WriteLine($"Error: {exception}");
         return Task.CompletedTask;
     }
 }

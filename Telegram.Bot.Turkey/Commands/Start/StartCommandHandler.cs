@@ -41,7 +41,7 @@ public class StartCommandHandler : CommandHandler
             replyMarkup: replyKeyboard, cancellationToken: cancellationToken);
     }
 
-    public override Task HandleIntermediateMessage(Update update, CancellationToken cancellationToken)
+    public override Task HandleIntermediateMessage(Update update, CancellationToken ct)
     {
         throw new NotImplementedException();
     }

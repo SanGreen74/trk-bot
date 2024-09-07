@@ -10,7 +10,7 @@ public abstract class CommandHandler
 
     public abstract Task StartHandle(Update update, CancellationToken cancellationToken);
     
-    public abstract Task HandleIntermediateMessage(Update update, CancellationToken cancellationToken);
+    public abstract Task HandleIntermediateMessage(Update update, CancellationToken ct);
 
     // protected async Task EndHandlingAsync(Update update, CancellationToken cancellationToken);
 }

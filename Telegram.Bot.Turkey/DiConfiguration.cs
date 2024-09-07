@@ -10,7 +10,7 @@ namespace Telegram.Bot.Turkey;
 
 public static class DiConfiguration
 {
-    public static IServiceCollection ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection ConfigureBotServices(this IServiceCollection services, IConfiguration configuration)
     {
         return services
             .ConfigureBot(configuration)
@@ -21,8 +21,12 @@ public static class DiConfiguration
 
     private static IServiceCollection ConfigureBot(this IServiceCollection services, IConfiguration configuration)
     {
-        const string token = "";
-        var telegramBotClient = new TelegramBotClient(token);
+        var botToken = configuration["BOT_TOKEN"];
+        if (botToken is null)
+        {
+            throw new InvalidOperationException("Не удалось найти токен для бота");
+        }
+        var telegramBotClient = new TelegramBotClient(botToken);
         services.AddSingleton<ITelegramBotClient, TelegramBotClient>(_ => telegramBotClient);
         return services;
     }
