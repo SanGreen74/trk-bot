@@ -18,8 +18,11 @@ public abstract class CommandHandler
     
     public abstract Task HandleIntermediateMessage(Update update, CancellationToken ct);
 
-    protected void OnComplete(string userName)
+    protected void OnComplete(string? userName)
     {
-        _sessionState.Invalidate(userName);
+        if (userName != null)
+        {
+            _sessionState.Invalidate(userName);
+        }
     }
 }

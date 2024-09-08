@@ -1,10 +1,7 @@
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Turkey.Commands;
-using Telegram.Bot.Turkey.Commands.AddUser;
-using Telegram.Bot.Turkey.Commands.RemoveUser;
-using Telegram.Bot.Turkey.Commands.Start;
+using Telegram.Bot.Turkey.Commands.Access;
 using Telegram.Bot.Turkey.State;
 
 namespace Telegram.Bot.Turkey;
@@ -17,7 +14,8 @@ public static class DiConfiguration
             .ConfigureBot(configuration)
             .ConfigureMessageReceiver()
             .ConfigureCommandHandlers()
-            .ConfigureSessionState();
+            .ConfigureSessionState()
+            .ConfigureAccessProvider();
     }
 
     private static IServiceCollection ConfigureBot(this IServiceCollection services, IConfiguration configuration)
@@ -36,15 +34,12 @@ public static class DiConfiguration
         => services
             .AddSingleton<MessageReceiver>();
 
-    private static IServiceCollection ConfigureCommandHandlers(this IServiceCollection services)
-        => services.AddSingleton<MainCommandHandler>()
-            .AddSingleton<CommandHandler, AddUserCommandHandler>()
-            .AddSingleton<CommandHandler, StartCommandHandler>()
-            .AddSingleton<CommandHandler, RemoveUserCommandHandler>()
-            .AddSingleton<CommandHandler[]>(sp => sp.GetServices<CommandHandler>().ToArray());
-
     private static IServiceCollection ConfigureSessionState(this IServiceCollection services)
         => services
             .AddMemoryCache()
             .AddSingleton<IUserSessionState, UserSessionState>();
+
+    private static IServiceCollection ConfigureAccessProvider(this IServiceCollection services)
+        => services
+            .AddSingleton<IUserAccessProvider, UserAccessProvider>();
 }
