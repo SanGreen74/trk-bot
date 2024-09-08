@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Telegram.Bot.Turkey.Sheets.Expenses.Models;
@@ -8,7 +9,7 @@ namespace Telegram.Bot.Turkey.Sheets.Expenses;
 internal class ExpensesService : IExpensesService
 {
     private const string SheetName = "Расходы (test)";
-    
+    private static readonly Regex GetExpenseNormalize = new(@"[$ \s]", RegexOptions.Compiled);
     private readonly SheetsService _sheets;
 
     public ExpensesService(SheetsService sheets)
@@ -130,9 +131,7 @@ internal class ExpensesService : IExpensesService
 
             // Проверяем, есть ли данные в этом ряду для пользователя
             var valueMaybe = row.Count > userColumnIndex
-                ? row[userColumnIndex].ToString()?
-                    .Replace(",", ".")
-                    .Replace("$", "")
+                ? GetExpenseNormalize.Replace(row[userColumnIndex].ToString() ?? string.Empty, "").Replace(",", ".")
                 : null;
             if (valueMaybe != null && decimal.TryParse(valueMaybe, CultureInfo.InvariantCulture, out var amount))
             {
