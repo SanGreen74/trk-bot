@@ -4,6 +4,7 @@ using Telegram.Bot.Turkey;
 using Telegram.Bot.Turkey.Sheets;
 using Telegram.Bot.Turkey.Sheets.Expenses;
 using Telegram.Bot.Turkey.Sheets.Expenses.Models;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -23,8 +24,8 @@ class Program
             .StartReceiving(cts.Token);
         
         Console.WriteLine("Press any key to exit...");
-        Console.ReadKey();
-
+        await Task.Delay(-1, cts.Token);
+        Console.WriteLine("Cancellation requested. Exiting...");
         await cts.CancelAsync();
     }
 }
