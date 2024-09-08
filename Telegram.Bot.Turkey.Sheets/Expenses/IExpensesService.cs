@@ -7,4 +7,6 @@ public interface IExpensesService
     Task<string[]> GetUsersAsync(CancellationToken cancellationToken);
 
     Task<InsertExpenseRowResponse> InsertExpenseRowAsync(InsertExpenseRowRequest request, CancellationToken cancellationToken);
+    
+    Task<GetExpensesResponse> GetExpensesAsync(string userName, CancellationToken cancellationToken);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Telegram.Bot.Turkey.Sheets.Expenses.Models;
@@ -87,7 +88,77 @@ internal class ExpensesService : IExpensesService
             InsertedInRow = emptyRowIndex
         };
     }
-    
+
+    public async Task<GetExpensesResponse> GetExpensesAsync(string userName, CancellationToken cancellationToken)
+    {
+        var range = $"{SheetName}!A1:G1000";
+        var request = _sheets.Spreadsheets.Values.Get(SheetConstants.SheetId, range);
+        var response = await request.ExecuteAsync(cancellationToken);
+
+        IList<IList<object>> values = response.Values;
+
+        if (values == null || values.Count == 0)
+        {
+            throw new Exception("No data found.");
+        }
+
+        // Определяем индекс столбца, соответствующий userName
+        var headerRow = values[0];
+        var userColumnIndex = -1;
+
+        for (int i = 0; i < headerRow.Count; i++)
+        {
+            var headerText = headerRow[i].ToString();
+            if (headerText != null && headerText.Equals(userName, StringComparison.OrdinalIgnoreCase))
+            {
+                userColumnIndex = i;
+                break;
+            }
+        }
+
+        if (userColumnIndex == -1)
+        {
+            throw new Exception($"User '{userName}' not found in the header row.");
+        }
+
+        // Извлекаем расходы пользователя из соответствующего столбца
+        var items = new List<GetExpensesResponse.Item>();
+
+        for (var rowIndex = 1; rowIndex < values.Count; rowIndex++) // Пропускаем заголовок
+        {
+            var row = values[rowIndex];
+
+            // Проверяем, есть ли данные в этом ряду для пользователя
+            var valueMaybe = row.Count > userColumnIndex
+                ? row[userColumnIndex].ToString()?
+                    .Replace(",", ".")
+                    .Replace("$", "")
+                : null;
+            if (valueMaybe != null && decimal.TryParse(valueMaybe, CultureInfo.InvariantCulture, out var amount))
+            {
+                // Получаем дату и комментарий
+                var date = DateOnly.ParseExact(row[0].ToString()!, "dd.MM.yyyy");
+                var comment = row[1].ToString()!;
+
+                // Создаем объект Item
+                var item = new GetExpensesResponse.Item
+                {
+                    AmountUsd = amount,
+                    Date = date,
+                    Comment = comment
+                };
+
+                items.Add(item);
+            }
+        }
+
+        // Возвращаем объект с расходами пользователя
+        return new GetExpensesResponse
+        {
+            Items = items.ToArray()
+        };
+    }
+
     private static int FindFirstEmptyRow(IList<IList<object>> values)
     {
         for (var i = 0; i < values.Count; i++) // Пропускаем первую строку, т.к. это заголовок

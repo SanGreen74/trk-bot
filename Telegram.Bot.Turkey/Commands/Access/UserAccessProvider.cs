@@ -23,4 +23,12 @@ public class UserAccessProvider : IUserAccessProvider
             .Participants
             .Any(x => x.TgName.Equals(userName)) ?? false;
     }
+
+    public async Task<bool> CanViewExpensesAsync(string userName, CancellationToken cancellationToken)
+    {
+        var configuration = await _configurationRepository.GetAsync(cancellationToken);
+        return configuration?
+            .Participants
+            .Any(x => x.TgName.Equals(userName)) ?? false;
+    }
 }

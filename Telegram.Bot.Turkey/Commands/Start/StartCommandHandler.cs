@@ -32,7 +32,8 @@ public class StartCommandHandler : CommandHandler
         
         var replyKeyboard = new ReplyKeyboardMarkup([
             [TgCommands.Texts.AddPersonalExpenseText],
-            [TgCommands.Texts.AddCommonExpenseText]
+            [TgCommands.Texts.AddCommonExpenseText],
+            [TgCommands.Texts.GetExpensesText]
         ])
         {
             ResizeKeyboard = true // Изменение размера клавиатуры

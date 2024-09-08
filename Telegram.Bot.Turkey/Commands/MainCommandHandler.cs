@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Turkey.State;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -59,8 +60,15 @@ public class MainCommandHandler
 
         async Task DeleteConnectedMessageAsync()
         {
-            await _botClient.DeleteMessageAsync(chatId, update.CallbackQuery.Message.MessageId,
-                cancellationToken: cancellationToken);
+            try
+            {
+                await _botClient.DeleteMessageAsync(chatId, update.CallbackQuery.Message.MessageId,
+                    cancellationToken: cancellationToken);
+            }
+            catch (ApiRequestException ex)
+            {
+                return;
+            }
         }
     }
 
