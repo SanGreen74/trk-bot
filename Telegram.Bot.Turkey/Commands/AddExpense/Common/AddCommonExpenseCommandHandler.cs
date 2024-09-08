@@ -1,17 +1,15 @@
 using System.Globalization;
 using System.Text;
-using Microsoft.Extensions.Primitives;
 using Telegram.Bot.Turkey.Commands.Access;
 using Telegram.Bot.Turkey.Commands.Helpers;
 using Telegram.Bot.Turkey.Commands.Transactions;
 using Telegram.Bot.Turkey.Sheets.BotConfiguration;
-using Telegram.Bot.Turkey.Sheets.BotConfiguration.Models;
 using Telegram.Bot.Turkey.State;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace Telegram.Bot.Turkey.Commands.AddCommonExpense;
+namespace Telegram.Bot.Turkey.Commands.AddExpense.Common;
 
 public class AddCommonExpenseCommandHandler : CommandHandler
 {
@@ -43,7 +41,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var chatId = message.Chat.Id;
         if (!await _userAccessProvider.CanAddExpensesAsync(userName, ct))
         {
-            await ReplyNoAccessToAddExpenses(chatId, userName, ct);
+            await _botClient.ReplyNoAccessToAddExpenses(chatId, userName, ct);
             OnComplete(userName);
             return;
         }
@@ -51,8 +49,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var state = new State();
         state.UpdateWaitAction(State.WaitActions.ChooseComment);
         await _botClient
-            .SendTextMessageAsync(chatId, "Введи комментарий покупки (например: ресторан/АЗС/...)",
-                cancellationToken: ct);
+            .SendTextMessageAsync(chatId, ExpenseTexts.InputComment, cancellationToken: ct);
         _sessionState.SetState(userName, state);
     }
 
@@ -84,7 +81,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var state = _sessionState.GetState<State>(userName);
         if (state == null)
         {
-            await ReplySessionExpiredAsync(chatId, ct);
+            await _botClient.ReplySessionExpiredAsync(chatId, ct);
             OnComplete(userName);
             return;
         }
@@ -92,7 +89,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var configuration = await _configurationRepository.GetAsync(ct);
         if (configuration == null)
         {
-            await ReplyConfigurationDamagedAsync(chatId, ct);
+            await _botClient.ReplyConfigurationDamagedAsync(chatId, ct);
             OnComplete(userName);
             return;
         }
@@ -110,7 +107,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
             };
             var inlineKeyboardMarkup = new InlineKeyboardMarkup(inlineKeyboardButtons);
             await _botClient
-                .SendTextMessageAsync(chatId, "Выберите валюту операции", replyMarkup: inlineKeyboardMarkup,
+                .SendTextMessageAsync(chatId, ExpenseTexts.ChooseCurrency, replyMarkup: inlineKeyboardMarkup,
                     cancellationToken: ct);
             return;
         }
@@ -170,7 +167,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var state = _sessionState.GetState<State>(userName);
         if (state == null)
         {
-            await ReplySessionExpiredAsync(chatId, ct);
+            await _botClient.ReplySessionExpiredAsync(chatId, ct);
             OnComplete(userName);
             return;
         }
@@ -178,7 +175,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         var configuration = await _configurationRepository.GetAsync(ct);
         if (configuration == null)
         {
-            await ReplyConfigurationDamagedAsync(chatId, ct);
+            await _botClient.ReplyConfigurationDamagedAsync(chatId, ct);
             OnComplete(userName);
             return;
         }
@@ -249,7 +246,6 @@ public class AddCommonExpenseCommandHandler : CommandHandler
             if (queryData == "На всех")
             {
                 state.UpdateWaitAction(State.WaitActions.AddParticipantAmountTotal);
-                state.AddMessageToDelete(messageId);
                 _sessionState.SetState(userName, state);
 
                 var task1 = _botClient
@@ -289,17 +285,11 @@ public class AddCommonExpenseCommandHandler : CommandHandler
                         })
                         .ToArray()
                 };
-                
-                var approvedTask = _botClient
-                    .SendTextMessageAsync(chatId, FormatTransactionTextMessage(transactionDto, configuration),
-                        cancellationToken: ct);
-                
+
+                var approvedTask = _botClient.ReplyBeginSaveTransaction(chatId, transactionDto, configuration, ct);
                 await Task.WhenAll(deleteConfirmationTask, approvedTask);
                 var insertedIndex = await _transactionUploader.InsertOneAsync(transactionDto, cancellationToken: ct);
-                var text =
-                    $"Транзакция успешно добавлена в [таблицу](https://docs.google.com/spreadsheets/d/1rYMbIKz_8lBW0_usvkQJmc46TclYfXm47OVKnw1rX6I/edit?gid=143443009#gid=143443009) в строчку №{insertedIndex}";
-                await _botClient
-                    .SendTextMessageAsync(chatId, text, parseMode: ParseMode.MarkdownV2, cancellationToken: ct);
+                await _botClient.ReplyTransactionWasAppended(chatId, insertedIndex, ct);
                 OnComplete(userName);
                 return;
             }
@@ -319,40 +309,6 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         }
     }
 
-    private static string FormatTransactionTextMessage(TransactionDto transaction, BotConfigurationDto configuration)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("Сохраняю транзакцию:");
-        sb.AppendLine($"Дата: {transaction.Date.ToString("dd.MM.yyyy")}");
-        sb.AppendLine($"Заплатил за чек: @{transaction.WhoPaidTgName}");
-        sb.AppendLine($"Комментарий: {transaction.Comment}");
-        foreach (var participant in transaction.Participants)
-        {
-            sb.Append($"— @{participant.TgName}: {participant.Amount.ToString("F2")} {transaction.CurrencyType}");
-            if (transaction.CurrencyType.Equals(CurrencyNames.Try.Name))
-            {
-                var usdValue = CurrencyConverter.ConvertToUsdIfNeed(participant.Amount, transaction.CurrencyType,
-                    configuration.Usd2Lira2UsdExchangeRate!);
-                sb.Append($" (~{usdValue.ToString("F2")} {CurrencyNames.Usd.Text})");
-            }
-            sb.AppendLine();
-        }
-
-        var totalPrice = transaction.Participants.Sum(x => x.Amount);
-        sb.Append($"Общая стоимость: {totalPrice.ToString("F2")} {transaction.CurrencyType}");
-        
-        if (transaction.CurrencyType.Equals(CurrencyNames.Try.Name))
-        {
-            var usdValue = CurrencyConverter.ConvertToUsdIfNeed(totalPrice, transaction.CurrencyType,
-                configuration.Usd2Lira2UsdExchangeRate!);
-            sb.Append($" (~{usdValue.ToString("F2")} {CurrencyNames.Usd.Text})");
-        }
-
-        sb.AppendLine();
-        
-        return sb.ToString();
-    }
-    
     private static string FormatParticipantsTextMessage(State state)
     {
         var sb = new StringBuilder();
@@ -366,27 +322,8 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         return sb.ToString();
     }
 
-    private async Task ReplyConfigurationDamagedAsync(long chatId, CancellationToken ct)
-    {
-        await _botClient.SendTextMessageAsync(chatId, "Проблема с получением конфигурации я хуй знает че случилось",
-            cancellationToken: ct);
-    }
-        
-    private async Task ReplySessionExpiredAsync(long chatId, CancellationToken ct)
-    {
-        await _botClient.SendTextMessageAsync(chatId, "Cессия истекла или что-то пошло не так. Начните сначала",
-            cancellationToken: ct);
-    }
-
-    private async Task ReplyNoAccessToAddExpenses(long chatId, string userName, CancellationToken ct)
-    {
-        await _botClient
-            .SendTextMessageAsync(chatId, $"Пользователь {userName} не может добавлять расходы", cancellationToken: ct);
-    }
-
     private class State
     {
-        public List<int> MessagesToDelete { get; private set; } = new(); 
         public string WaitAction { get; private set; }
         
         public string Currency { get; private set; }
@@ -406,7 +343,6 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         public void UpdateComment(string comment) => Comment = comment;
         
         public void AddParticipant(Participant participant) => Participants.Add(participant);
-        public void AddMessageToDelete(int messageId) => MessagesToDelete.Add(messageId);
         
         public bool CanSave() => Participants.Count > 0 
                                  && !string.IsNullOrEmpty(WhoPaidTg)
@@ -439,27 +375,6 @@ public class AddCommonExpenseCommandHandler : CommandHandler
 
             // Сумма на всех поровну
             public const string AddParticipantAmountTotal = "add_participant_amount_total";
-            
-            // Подвердить сохранение
-            public const string ConfirmSave = "confirm_save";
-
-            private static readonly IReadOnlyDictionary<string, string> _waitActions =
-                new Dictionary<string, string>
-                {
-                    // Comment -> Currency
-                    [ChooseComment] = ChooseCurrency,
-                    // Currency -> Who Paid Tg
-                    [ChooseCurrency] = ChooseWhoPaid,
-                    // Кто заплатил -> Конкретный человек / На всех
-                    [ChooseWhoPaid] = AddParticipant,
-
-                    // Выбор человека -> Сумма для человека
-                    [AddParticipant] = AddParticipantAmount,
-                    // Сумма для человека -> Выбор следующего человека 
-                    [AddParticipantAmount] = AddParticipant
-                };
-            
-            public static string GetNext(string actionName) => _waitActions[actionName];
         }
     }
 }
