@@ -23,13 +23,47 @@ public class MainCommandHandler
     {
         if (update is { Type: UpdateType.Message, Message: not null })
         {
-            await HandleMessageAsync(update, cancellationToken);
+            try
+            {
+                await HandleMessageAsync(update, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                await _botClient
+                    .SendTextMessageAsync(update.Message.Chat.Id,
+                        $"Произошла техническая ошибка, Никитос напортачил\n{e.ToString()}",
+                        cancellationToken: cancellationToken);
+                if (update.Message.From?.Username != null)
+                {
+                    _userSessionState.Invalidate(update.Message.From.Username);
+                }
+            }
             return;
         }
 
         if (update.CallbackQuery != null)
         {
-            await HandleCallbackQueryAsync(update, cancellationToken);
+            try
+            {
+                await HandleCallbackQueryAsync(update, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                Console.WriteLine(e.ToString());
+                if (update.CallbackQuery.Message?.Chat.Id != null)
+                {
+                    await _botClient
+                        .SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id,
+                            $"Произошла техническая ошибка, Никитос напортачил\n{e.ToString()}",
+                            cancellationToken: cancellationToken);
+                }
+                if (update.CallbackQuery.Message?.From?.Username != null)
+                {
+                    _userSessionState.Invalidate(update.CallbackQuery.Message.From.Username);
+                }
+            }
         }
     }
 

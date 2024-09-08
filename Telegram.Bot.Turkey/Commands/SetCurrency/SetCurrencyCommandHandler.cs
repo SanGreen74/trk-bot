@@ -75,7 +75,13 @@ public class SetCurrencyCommandHandler : CommandHandler
         }
 
         var tryValueString = match.Groups[1].Value;
-        var result = decimal.Parse(tryValueString, CultureInfo.InvariantCulture);
+        if (!decimal.TryParse(tryValueString, CultureInfo.InvariantCulture, out var result))
+        {
+            await _botClient
+                .SendTextMessageAsync(chatId, $"Не удалось распарсить число {result}", cancellationToken: ct);
+            OnComplete(userName);
+            return;
+        }
         
         var configurationDto = await _botConfigurationRepository.GetAsync(ct);
         if (configurationDto == null)

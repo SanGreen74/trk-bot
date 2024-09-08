@@ -118,7 +118,13 @@ public class AddPersonalExpenseCommandHandler : CommandHandler
         if (state.WaitAction == State.WaitActions.AddSumTotal)
         {
             var replaced = messageText.Replace(",", ".");
-            var value = decimal.Parse(replaced, CultureInfo.InvariantCulture);
+            if (!decimal.TryParse(replaced, CultureInfo.InvariantCulture, out var value))
+            {
+                await _botClient
+                    .SendTextMessageAsync(chatId, $"Не удалось распарсить число {replaced}", cancellationToken: ct);
+                OnComplete(userName);
+                return;
+            }
 
             state.UpdateSumTotal(value);
             state.UpdateWaitAction(State.WaitActions.ConfirmSave);

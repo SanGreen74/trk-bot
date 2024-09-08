@@ -116,7 +116,13 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         if (state.WaitAction == State.WaitActions.AddParticipantAmount)
         {
             var replaced = messageText.Replace(",", ".");
-            var value = decimal.Parse(replaced, CultureInfo.InvariantCulture);
+            if (!decimal.TryParse(replaced, CultureInfo.InvariantCulture, out var value))
+            {
+                await _botClient
+                    .SendTextMessageAsync(chatId, $"Не удалось распарсить число {replaced}", cancellationToken: ct);
+                OnComplete(userName);
+                return;
+            }
                 
             state.Participants.Last().Amount = value;
             state.UpdateWaitAction(State.WaitActions.AddParticipant);
@@ -143,7 +149,13 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         if (state.WaitAction == State.WaitActions.AddParticipantAmountTotal)
         {
             var replaced = messageText.Replace(",", ".");
-            var value = decimal.Parse(replaced, CultureInfo.InvariantCulture);
+            if (!decimal.TryParse(replaced, CultureInfo.InvariantCulture, out var value))
+            {
+                await _botClient
+                    .SendTextMessageAsync(chatId, $"Не удалось распарсить число {replaced}", cancellationToken: ct);
+                OnComplete(userName);
+                return;
+            }
             var amountPerUser = value / configuration.Participants.Count;
             foreach (var participant in configuration.Participants)
             {
