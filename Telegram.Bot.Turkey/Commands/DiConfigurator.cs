@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Turkey.Commands.AddCommonExpense;
 using Telegram.Bot.Turkey.Commands.AddUser;
 using Telegram.Bot.Turkey.Commands.RemoveUser;
 using Telegram.Bot.Turkey.Commands.SetCurrency;
@@ -14,6 +15,6 @@ public static class DiConfigurator
             .AddSingleton<CommandHandler, StartCommandHandler>()
             .AddSingleton<CommandHandler, RemoveUserCommandHandler>()
             .AddSingleton<CommandHandler, SetCurrencyCommandHandler>()
-            // .AddSingleton<CommandHandler, SetCurrencyCommandHandler>()
+            .AddSingleton<CommandHandler, AddCommonExpenseCommandHandler>()
             .AddSingleton<CommandHandler[]>(sp => sp.GetServices<CommandHandler>().ToArray());
 }
