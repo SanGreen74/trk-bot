@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Primitives;
 using Telegram.Bot.Turkey.Commands.Access;
 using Telegram.Bot.Turkey.Commands.Helpers;
 using Telegram.Bot.Turkey.Commands.Transactions;
 using Telegram.Bot.Turkey.Sheets.BotConfiguration;
+using Telegram.Bot.Turkey.Sheets.BotConfiguration.Models;
 using Telegram.Bot.Turkey.State;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -17,16 +19,18 @@ public class AddCommonExpenseCommandHandler : CommandHandler
     private readonly IBotConfigurationRepository _configurationRepository;
     private readonly IUserAccessProvider _userAccessProvider;
     private readonly IUserSessionState _sessionState;
+    private readonly ITransactionUploader _transactionUploader;
     public override required string CommandName { get; init; } = TgCommands.AddCommonExpense;
 
     public AddCommonExpenseCommandHandler(ITelegramBotClient botClient,
         IBotConfigurationRepository configurationRepository, IUserAccessProvider userAccessProvider,
-        IUserSessionState sessionState) : base(sessionState)
+        IUserSessionState sessionState, ITransactionUploader transactionUploader) : base(sessionState)
     {
         _botClient = botClient;
         _configurationRepository = configurationRepository;
         _userAccessProvider = userAccessProvider;
         _sessionState = sessionState;
+        _transactionUploader = transactionUploader;
     }
 
     public override async Task StartHandle(Update update, CancellationToken ct)
@@ -267,8 +271,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
                     OnComplete(userName);
                     return;
                 }
-
-                // TODO Save
+                
                 var deleteConfirmationTask = _botClient
                     .DeleteMessageAsync(chatId, messageId, cancellationToken: ct);
 
@@ -288,12 +291,15 @@ public class AddCommonExpenseCommandHandler : CommandHandler
                 };
                 
                 var approvedTask = _botClient
-                    .SendTextMessageAsync(chatId, FormatTransactionTextMessage(transactionDto), cancellationToken: ct);
+                    .SendTextMessageAsync(chatId, FormatTransactionTextMessage(transactionDto, configuration),
+                        cancellationToken: ct);
                 
                 await Task.WhenAll(deleteConfirmationTask, approvedTask);
+                var insertedIndex = await _transactionUploader.InsertOneAsync(transactionDto, cancellationToken: ct);
+                var text =
+                    $"Транзакция успешно добавлена в [таблицу](https://docs.google.com/spreadsheets/d/1rYMbIKz_8lBW0_usvkQJmc46TclYfXm47OVKnw1rX6I/edit?gid=143443009#gid=143443009) в строчку №{insertedIndex}";
                 await _botClient
-                    .SendTextMessageAsync(chatId, "Скоро научимся сохранять в Google Sheet",
-                        cancellationToken: ct);
+                    .SendTextMessageAsync(chatId, text, parseMode: ParseMode.MarkdownV2, cancellationToken: ct);
                 OnComplete(userName);
                 return;
             }
@@ -303,17 +309,17 @@ public class AddCommonExpenseCommandHandler : CommandHandler
             _sessionState.SetState(userName, state);
                 
             var participant = configuration.Participants.First(x => x.TgName.Equals(queryData));
+            var participantsTextMessage = FormatParticipantsTextMessage(state);
             var task_1 = _botClient
                 .SendTextMessageAsync(chatId, $"Введи сумму, которую потратил(a) {participant.Name}",
                     cancellationToken: ct);
-            var participantsTextMessage = FormatParticipantsTextMessage(state);
             var task_2 = _botClient.EditMessageTextAsync(chatId, messageId, participantsTextMessage, cancellationToken: ct);
             await Task.WhenAll(task_1, task_2);
             return;
         }
     }
 
-    private static string FormatTransactionTextMessage(TransactionDto transaction)
+    private static string FormatTransactionTextMessage(TransactionDto transaction, BotConfigurationDto configuration)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Сохраняю транзакцию:");
@@ -322,11 +328,28 @@ public class AddCommonExpenseCommandHandler : CommandHandler
         sb.AppendLine($"Комментарий: {transaction.Comment}");
         foreach (var participant in transaction.Participants)
         {
-            sb.AppendLine($"— @{participant.TgName}: {participant.Amount.ToString("F2")} {transaction.CurrencyType}");
+            sb.Append($"— @{participant.TgName}: {participant.Amount.ToString("F2")} {transaction.CurrencyType}");
+            if (transaction.CurrencyType.Equals(CurrencyNames.Try.Name))
+            {
+                var usdValue = CurrencyConverter.ConvertToUsdIfNeed(participant.Amount, transaction.CurrencyType,
+                    configuration.Usd2Lira2UsdExchangeRate!);
+                sb.Append($" (~{usdValue.ToString("F2")} {CurrencyNames.Usd.Text})");
+            }
+            sb.AppendLine();
         }
 
-        var totalPrice = transaction.Participants.Sum(x => x.Amount).ToString("F2");
-        sb.AppendLine($"Общая стоимость: {totalPrice} {transaction.CurrencyType}");
+        var totalPrice = transaction.Participants.Sum(x => x.Amount);
+        sb.Append($"Общая стоимость: {totalPrice.ToString("F2")} {transaction.CurrencyType}");
+        
+        if (transaction.CurrencyType.Equals(CurrencyNames.Try.Name))
+        {
+            var usdValue = CurrencyConverter.ConvertToUsdIfNeed(totalPrice, transaction.CurrencyType,
+                configuration.Usd2Lira2UsdExchangeRate!);
+            sb.Append($" (~{usdValue.ToString("F2")} {CurrencyNames.Usd.Text})");
+        }
+
+        sb.AppendLine();
+        
         return sb.ToString();
     }
     

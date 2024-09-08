@@ -4,6 +4,7 @@ using Telegram.Bot.Turkey.Commands.AddUser;
 using Telegram.Bot.Turkey.Commands.RemoveUser;
 using Telegram.Bot.Turkey.Commands.SetCurrency;
 using Telegram.Bot.Turkey.Commands.Start;
+using Telegram.Bot.Turkey.Commands.Transactions;
 
 namespace Telegram.Bot.Turkey.Commands;
 
@@ -16,5 +17,6 @@ public static class DiConfigurator
             .AddSingleton<CommandHandler, RemoveUserCommandHandler>()
             .AddSingleton<CommandHandler, SetCurrencyCommandHandler>()
             .AddSingleton<CommandHandler, AddCommonExpenseCommandHandler>()
-            .AddSingleton<CommandHandler[]>(sp => sp.GetServices<CommandHandler>().ToArray());
+            .AddSingleton<CommandHandler[]>(sp => sp.GetServices<CommandHandler>().ToArray())
+            .AddSingleton<ITransactionUploader, TransactionUploader>();
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Turkey;
 using Telegram.Bot.Turkey.Sheets;
 using Telegram.Bot.Turkey.Sheets.Expenses;
+using Telegram.Bot.Turkey.Sheets.Expenses.Models;
 
 class Program
 {

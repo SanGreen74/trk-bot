@@ -1,11 +1,12 @@
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Telegram.Bot.Turkey.Sheets.Expenses.Models;
 
 namespace Telegram.Bot.Turkey.Sheets.Expenses;
 
 internal class ExpensesService : IExpensesService
 {
-    private const string SheetName = "Расходы";
+    private const string SheetName = "Расходы (test)";
     
     private readonly SheetsService _sheets;
 
@@ -35,5 +36,69 @@ internal class ExpensesService : IExpensesService
         }
 
         string FormatUsersCells() => $"{SheetName}!D1:G1";
+    }
+
+    public async Task<InsertExpenseRowResponse> InsertExpenseRowAsync(InsertExpenseRowRequest request, CancellationToken cancellationToken)
+    {
+        // 1. Получаем данные из Google Sheets
+        var sheetData = await _sheets.Spreadsheets.Values.Get(SheetConstants.SheetId, "A1:G1000")
+            .ExecuteAsync(cancellationToken);
+        var values = sheetData.Values ?? new List<IList<object>>();
+        var emptyRowIndex = FindFirstEmptyRow(values);
+
+        var range = $"{SheetName}!A{emptyRowIndex}:G{emptyRowIndex}";
+        var rowToInsert = new List<object>
+        {
+            request.Date.ToString("dd.MM.yyyy"), // A: Дата
+            request.Comment,                     // B: Комментарий
+            request.WhoPaidName                  // C: Кто заплатил
+        };
+        var participantsHeaders = values
+            .First()
+            .Skip(3)
+            .Select(x => x.ToString())
+            .ToList();
+
+        // Заполняем ячейки D:G на основе участников
+        foreach (var header in participantsHeaders)
+        {
+            var participant = request.Participants
+                .FirstOrDefault(p => p.Name.Equals(header, StringComparison.InvariantCultureIgnoreCase));
+            if (participant != null)
+            {
+                rowToInsert.Add(participant.Amount); // Если участник не найден, оставляем ячейку пустой}
+            }
+            else
+            {
+                rowToInsert.Add(string.Empty);
+            }
+        }
+        var valueRange = new ValueRange
+        {
+            Values = new List<IList<object>> { rowToInsert }
+        };
+        
+        var updateRequest = _sheets.Spreadsheets.Values.Update(valueRange, SheetConstants.SheetId, range);
+        updateRequest.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+        await updateRequest.ExecuteAsync(cancellationToken);
+        return new InsertExpenseRowResponse
+        {
+            InsertedInRow = emptyRowIndex
+        };
+    }
+    
+    private static int FindFirstEmptyRow(IList<IList<object>> values)
+    {
+        for (var i = 0; i < values.Count; i++) // Пропускаем первую строку, т.к. это заголовок
+        {
+            var row = values[i];
+            if (row.All(x => string.IsNullOrEmpty(x.ToString())))
+            {
+                return i + 1;
+            }
+        }
+
+        return values.Count + 1;
     }
 }
