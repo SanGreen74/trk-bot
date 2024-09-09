@@ -32,7 +32,7 @@ public static class CommonExpenseResponses
     {
         var text = ExpenseTexts.TransactionWasAppended(rowNumber);
         await botClient
-            .SendTextMessageAsync(chatId, text, parseMode: ParseMode.MarkdownV2, cancellationToken: ct);
+            .SendTextMessageAsync(chatId, text, parseMode: ParseMode.MarkdownV2, disableWebPagePreview: true, cancellationToken: ct);
     }
 
     public static async Task ReplyBeginSaveTransaction(this ITelegramBotClient botClient, long chatId, TransactionDto transactionDto, BotConfigurationDto configuration, CancellationToken ct)
