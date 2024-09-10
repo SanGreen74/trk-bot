@@ -139,7 +139,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
 
             var text = inlineKeyboardButtons.Length > 0
                 ? "Выбери кого еще добавить в счет?"
-                : "Сохранить транзакцию?";
+                : $"Сохранить транзакцию?\n{FormatParticipantsTextMessage(state)}";
             await _botClient.SendTextMessageAsync(chatId, text, replyMarkup: inlineKeyboardMarkup,
                 cancellationToken: ct);
             return;
@@ -330,7 +330,7 @@ public class AddCommonExpenseCommandHandler : CommandHandler
             sb.AppendLine($"— @{participant.TgName}, {participant.Amount.ToString("F2")} {state.Currency}");
         }
 
-        sb.AppendLine($"Итого: {state.Participants.Sum(x => x.Amount).ToString("F2")}");
+        sb.AppendLine($"Итого: {state.Participants.Sum(x => x.Amount).ToString("F2")} {state.Currency}  ");
         return sb.ToString();
     }
 

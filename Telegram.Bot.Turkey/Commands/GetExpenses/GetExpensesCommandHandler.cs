@@ -133,7 +133,7 @@ public class GetExpensesCommandHandler : CommandHandler
         }
 
         var totalPerDay = transactions.Sum(x => x.AmountUsd);
-        sb.AppendLine($"Всего за день: {totalPerDay.ToString("F2")}");
+        sb.AppendLine($"Всего за день: {totalPerDay.ToString("F2")} {CurrencyNames.Usd.Name}");
         return sb.ToString();
     }
 
