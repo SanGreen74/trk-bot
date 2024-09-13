@@ -15,7 +15,7 @@ public static class TgCommands
 
     public static class Texts
     {
-        public const string AddPersonalExpenseText = "Добавить личный расход";
+        public const string AddPersonalExpenseText = "Добавить мой расход";
         public const string AddCommonExpenseText = "Добавить общий расход";
         public const string GetExpensesText = "Посмотреть расходы";
         
