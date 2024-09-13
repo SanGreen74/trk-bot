@@ -14,7 +14,7 @@ public static class ExpenseTexts
     public static string TransactionWasAppended(int rowNumber)
     {
         return
-            $"Транзакция успешно добавлена в [таблицу](https://docs.google.com/spreadsheets/d/1rYMbIKz_8lBW0_usvkQJmc46TclYfXm47OVKnw1rX6I/edit?gid=143443009#gid=143443009) в строчку №{rowNumber}";
+            $"Транзакция успешно добавлена в [таблицу](https://docs.google.com/spreadsheets/d/1rYMbIKz_8lBW0_usvkQJmc46TclYfXm47OVKnw1rX6I/edit?gid=0#gid=0) в строчку №{rowNumber}";
     }
     
     public static string FormatTransactionTextMessage(TransactionDto transaction, BotConfigurationDto configuration)
