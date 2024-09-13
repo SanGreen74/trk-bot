@@ -8,7 +8,7 @@ namespace Telegram.Bot.Turkey.Sheets.Expenses;
 
 internal class ExpensesService : IExpensesService
 {
-    private const string SheetName = "Расходы (test)";
+    private const string SheetName = "Расходы";
     private static readonly Regex GetExpenseNormalize = new(@"[$\u00A0\s]", RegexOptions.Compiled);
     private readonly SheetsService _sheets;
 
